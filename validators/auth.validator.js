@@ -21,5 +21,10 @@ const signupSchema = z.object({
         .trim()
         .min(5, { message: "password must be at lest of 5 chars" })
         .max(1024, { message: "password must not be more then 1024 chars" }),
+        usertype: z
+        .string({ required_error: "usertype is require" })
+        .trim()
+        .min(8, { message: "usertype must be at lest of 8 chars" })
+        .max(255, { message: "usertype must not be more then 255 chars" }),
 });
 module.exports = signupSchema;
