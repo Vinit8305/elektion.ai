@@ -27,16 +27,16 @@ userSchema.pre('save', async function () {
 
 userSchema.methods.generateToken = async function () {
     try {
-        return jwt.sign({
-            userId: this._id.toString,
+        const token = jwt.sign({
+            userId: this._id.toString(),
             email: this.email,
             isAdmin: this.isAdmin,
         },
-            process.env.JWT_SECRECT_KEY,
+            process.env.JWT_SECRET_KEY,
             {
                 expiresIn: "30d",
-            }
-        )
+            })
+        return token;
     } catch (error) {
         console.error(error)
     }
