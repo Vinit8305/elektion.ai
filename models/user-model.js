@@ -8,10 +8,12 @@ const userSchema = new mongoose.Schema({
     phone: {type: String, require: true,},
     password: {type: String, require: true,},
     usertype: { type: String, enum: ['politicalworker', 'surveyor'], required: true },
-    isAdmin: {type: Boolean, default: false,}
+    isAdmin: {type: Boolean, default: false,},
+    resetToken: { type: String },
+    resetTokenExpiry: { type: Date },
 })
 // 
-userSchema.pre('save', async function () {
+userSchema.pre('save', async function (next) {
     const user = this;
     if (!user.isModified("password")) {
         next();
