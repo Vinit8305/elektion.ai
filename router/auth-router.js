@@ -10,7 +10,7 @@ router.route('/').get(authcontrollers.home);
 router.route('/register').post(validate(signupSchema), authcontrollers.register);
 router.route('/login').post(authcontrollers.login);
 router.route('/me').get(authMiddleware, authcontrollers.getUserData);
-router.put("/update-password", authMiddleware, updatePassword);
+router.route("/update-password").post (authMiddleware, updatePassword);
 router.route('/logout').post(authMiddleware, authcontrollers.logout);
 router.route("/forgot-password").post( authcontrollers.forgotPassword);
 router.route("/reset-password/:token").post( authcontrollers.resetPassword);

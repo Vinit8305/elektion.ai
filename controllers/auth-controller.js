@@ -19,7 +19,7 @@ const register = async (req, res) => {
         const { username, email, phone, password, usertype } = req.body;
         const userExist = await User.findOne({ email: email })
         if (userExist) {
-            return res.status(400).json({ message: "email.is already exists" })
+            return res.status(400).json({ message: "email is already exists" })
         }
         const userCreated = await User.create({
             username,
@@ -41,28 +41,44 @@ const register = async (req, res) => {
 
 // ---user Login--- //
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         const userExist = await User.findOne({ email });
 
         if (!userExist) {
-            return res.status(400).json({ message: "invaild credentials"});
+            return res.status(400).json({ message: "Invalid credentials" });
         }
-        const user = await bcrypt.compare(password, userExist.password);
-        if (user) {
+
+        const isPasswordCorrect = await bcrypt.compare(password, userExist.password);
+
+        if (!isPasswordCorrect) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // Check the user type
+        if (userExist.usertype === 'surveyor') {
             res.status(200).json({
-                msg: "login success",
+                msg: "Login success",
                 token: await userExist.generateToken(),
-                userId: userExist._id.toString()
+                userId: userExist._id.toString(),
+                redirect: "/surveyor"  // Redirect URL for surveyor
+            });
+        } else if (userExist.usertype === 'politicalworker') {
+            res.status(200).json({
+                msg: "Login success",
+                token: await userExist.generateToken(),
+                userId: userExist._id.toString(),
+                redirect: "/politicalworker"  // Redirect URL for politicalworker
             });
         } else {
-            res.status(401).json({ message: "invalid email or password" })
+            res.status(400).json({ message: "Invalid user type" });
         }
     } catch (error) {
         next(error);
     }
 }
+
 
 // Get logged-in user's data //
 
@@ -131,39 +147,34 @@ const logout = async (req, res) => {
 const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        console.log(email);
-        
-        const user = await User.findOne({ email });
-        console.log(user);
-        
 
+        // Check if the user exists
+        const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        // Generate a reset token
+        // Generate a reset token and set expiry time
         const resetToken = crypto.randomBytes(32).toString("hex");
         user.resetToken = resetToken;
         user.resetTokenExpiry = Date.now() + 3600000; // Token valid for 1 hour
         await user.save();
 
-        // Send email with reset link (update the link based on your application URL)
+        // Create transporter for sending email
         const transporter = nodemailer.createTransport({
-            service: "Gmail", // You can use any email service
+            service: "Gmail", 
             auth: {
-                user: process.env.EMAIL_USER, // Your email address
-                pass: process.env.EMAIL_PASS, // Your email password or app-specific password
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
             },
         });
 
+        // Define the reset link and send the email
         const resetLink = `http://localhost:5004/api/auth/reset-password/${resetToken}`;
-        console.log("resetLink");
-        
-
         await transporter.sendMail({
             to: email,
             subject: "Password Reset Request",
-            html: `<p>You requested for a password reset. Click the link below to reset your password:</p>
+            html: `<p>You requested a password reset. Click the link below to reset your password:</p>
                    <a href="${resetLink}">${resetLink}</a>`,
         });
 
@@ -174,27 +185,25 @@ const forgotPassword = async (req, res) => {
     }
 };
 
-// Add this function to handle password reset with the token
 const resetPassword = async (req, res) => {
-    const { token } = req.params; // Get the token from the URL
-    console.log(token)
+    const { token } = req.params;
     const { newPassword, confirmNewPassword } = req.body;
 
     try {
+        // Find the user with the valid reset token and check if it hasn't expired
         const user = await User.findOne({ resetToken: token, resetTokenExpiry: { $gt: Date.now() } });
-
         if (!user) {
             return res.status(400).json({ message: "Invalid or expired token" });
         }
 
+        // Ensure the passwords match
         if (newPassword !== confirmNewPassword) {
             return res.status(400).json({ message: "Passwords do not match" });
         }
 
         // Hash the new password
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        
+        user.password = await newPassword;
         // Clear the reset token and expiry
         user.resetToken = undefined;
         user.resetTokenExpiry = undefined;
@@ -203,9 +212,10 @@ const resetPassword = async (req, res) => {
         res.status(200).json({ message: "Password reset successfully" });
     } catch (error) {
         console.error("Error in resetPassword:", error);
-        res.status(500).json({ message: "Internal server error" })
+        res.status(500).json({ message: "Internal server error" });
     }
 };
+
 
 module.exports = { home, register, login, getUserData, updatePassword, logout, forgotPassword, resetPassword };
 
