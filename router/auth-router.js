@@ -13,7 +13,7 @@ router.route('/me').get(authMiddleware, authcontrollers.getUserData);
 router.route("/update-password").post (authMiddleware, updatePassword);
 router.route('/logout').post(authMiddleware, authcontrollers.logout);
 router.route("/forgot-password").post( authcontrollers.forgotPassword);
-router.route("/reset-password/:token").post( authcontrollers.resetPassword);
+router.route("/reset-password").post( authcontrollers.resetPassword);
 
 
 module.exports = router;
